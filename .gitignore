@@ -1,0 +1,25 @@
+# Node.js / TypeScript
+node_modules/
+dist/
+build/
+*.log
+.env*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.eggs/
+*.egg-info/
+*.egg
+
+# OS generated files
+.DS_Store
+Thumbs.db

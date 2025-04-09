@@ -1,0 +1,4 @@
+fastmcp
+playwright
+python-dotenv
+Pillow
