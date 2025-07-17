@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/godzilla675-agentic-ai-tool-suite-badge.png)](https://mseep.ai/app/godzilla675-agentic-ai-tool-suite)
+
 # Unified MCP Suite
 
 This repository contains a collection of Model Context Protocol (MCP) servers, packaged together for convenience. Each server provides distinct functionalities related to media handling, information retrieval, and document creation.
