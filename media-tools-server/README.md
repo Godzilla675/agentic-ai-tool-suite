@@ -21,11 +21,19 @@ A Model Context Protocol server for media search, download, and understanding us
 - **`video_understanding`** - Extract transcripts from YouTube videos
   - Returns timestamped transcript text
   - Useful for content analysis and summarization
+  - Note: Only works with videos that have transcripts/captions enabled
   
-- **`image_understanding`** - Analyze images using Google Gemini AI
+- **`image_understanding`** - Analyze images using Google Gemini AI (gemini-2.5-flash)
   - Accepts image URLs or local file paths
   - Optional custom prompts for guided analysis
   - Returns detailed image descriptions
+  - Powered by Google's latest multimodal AI
+
+- **`image_generation`** - Generate detailed image descriptions using Google Gemini AI
+  - Creates highly detailed visual descriptions suitable for image generation
+  - Descriptions can be used with DALL-E, Midjourney, Stable Diffusion, etc.
+  - Optional file path to save description as text
+  - Note: Gemini creates descriptions, not actual image files
 
 ## Development
 
