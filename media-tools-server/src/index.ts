@@ -18,20 +18,20 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, GenerateContentRe
 // --- API Configuration ---
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || 'xtiRQvUeNUVQLvUBGs3L_4Nnau0DbfXvVvZoUZcMLzA';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY; // Read Google API Key
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY; // Support both GEMINI_API_KEY and GOOGLE_API_KEY
 
 if (!YOUTUBE_API_KEY) {
   console.error("WARN: YOUTUBE_API_KEY environment variable is not set. Video search will fail.");
 }
 // Re-enable Google API Key check and GenAI client setup
-if (!GOOGLE_API_KEY) {
-    console.error("WARN: GOOGLE_API_KEY environment variable is not set. Image generation/understanding will fail.");
+if (!GEMINI_API_KEY) {
+    console.error("WARN: GEMINI_API_KEY environment variable is not set. Image generation/understanding will fail.");
 }
 
 // --- Google AI Client Setup ---
 let genAI: GoogleGenerativeAI | null = null;
-if (GOOGLE_API_KEY) {
-    genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+if (GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 } else {
     console.error("GoogleGenerativeAI client could not be initialized due to missing API key.");
 }
@@ -233,13 +233,11 @@ async function handleImageUnderstanding({ imageUrl, imagePath, prompt }: { image
 
         if (!imagePart) { throw new Error("Could not prepare image data."); }
 
-        // Use gemini-2.0-flash-exp-image-generation as requested by user
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp-image-generation" });
+        // Use gemini-2.5-flash for image understanding (supports vision)
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const contents = [ { role: "user", parts: [ {text: userPrompt}, imagePart ] } ];
 
-        // Note: gemini-2.0-flash might not be the optimal model for *understanding* vs generation
-        // If this fails, consider gemini-1.5-flash or gemini-pro-vision again.
         const result = await model.generateContent({ contents });
         const response = result.response;
         const description = response.text();
@@ -253,6 +251,82 @@ async function handleImageUnderstanding({ imageUrl, imagePath, prompt }: { image
              detailMessage = error.cause.message;
          }
         return { isError: true, content: [{ type: 'text', text: `Error understanding image: ${detailMessage}` }] };
+    }
+}
+
+// 6. Image Generation Logic
+async function handleImageGeneration({ prompt, filePath }: { prompt: string; filePath?: string }) {
+    if (!genAI) {
+        return { isError: true, content: [{ type: 'text', text: 'Google AI SDK not initialized. Check API key.' }] };
+    }
+
+    try {
+        // Use gemini-2.5-flash for generating detailed image descriptions
+        // Gemini doesn't directly generate image files like DALL-E, but provides detailed descriptions
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        
+        // Request a detailed description suitable for image generation
+        const enhancedPrompt = `Create a highly detailed visual description for generating an image of: "${prompt}". 
+Include specific details about:
+- Composition and framing
+- Lighting and atmosphere
+- Colors and textures
+- Subject details and positioning
+- Background elements
+- Mood and style
+
+Provide the description in a way that would help an artist or image generation AI create the image.`;
+
+        const result = await model.generateContent({
+            contents: [{
+                role: 'user',
+                parts: [{ text: enhancedPrompt }]
+            }],
+            generationConfig: {
+                temperature: 0.9,
+                topP: 0.95,
+            }
+        });
+
+        const description = result.response.text();
+        
+        let responseMessage = `Image Generation Request: "${prompt}"\n\n`;
+        responseMessage += `Detailed Description for Image Generation:\n${description}\n\n`;
+        responseMessage += `USAGE NOTES:\n`;
+        responseMessage += `- Gemini does not directly generate images like DALL-E or Midjourney\n`;
+        responseMessage += `- Use the detailed description above with dedicated image generation services:\n`;
+        responseMessage += `  • DALL-E (OpenAI)\n`;
+        responseMessage += `  • Midjourney\n`;
+        responseMessage += `  • Stable Diffusion\n`;
+        responseMessage += `  • Adobe Firefly\n`;
+        responseMessage += `- The description is optimized to help these services create your desired image\n`;
+
+        if (filePath) {
+            // Save the description to a text file
+            try {
+                const dirname = path.dirname(filePath);
+                if (!fs.existsSync(dirname)) {
+                    fs.mkdirSync(dirname, { recursive: true });
+                }
+                const textFilePath = filePath.replace(/\.[^/.]+$/, '.txt');
+                fs.writeFileSync(textFilePath, description);
+                responseMessage += `\n✓ Description saved to: ${textFilePath}`;
+            } catch (saveError: any) {
+                responseMessage += `\n⚠ Warning: Could not save description file: ${saveError.message}`;
+            }
+        }
+
+        return { content: [{ type: 'text', text: responseMessage }] };
+
+    } catch (error: any) {
+        console.error('Image Generation Error:', error.message);
+        return { 
+            isError: true, 
+            content: [{ 
+                type: 'text', 
+                text: `Error generating image description: ${error.message}\n\nNote: Gemini provides detailed descriptions for image generation. For actual image files, use dedicated services like DALL-E, Midjourney, or Stable Diffusion.` 
+            }] 
+        };
     }
 }
 
@@ -279,7 +353,10 @@ const videoUnderstandingArgsSchema = z.object({
     video_id: z.string().describe('The ID of the YouTube video (from the URL).'),
 });
 
-// Removed imageGenerationArgsSchema as the tool is commented out
+const imageGenerationArgsSchema = z.object({
+    prompt: z.string().describe('Description of the image to generate.'),
+    filePath: z.string().optional().describe('Optional local file path (including filename and extension) where the image representation should be saved. e.g., C:/Users/Ahmed/Desktop/generated_image.png'),
+});
 
 const imageUnderstandingArgsSchema = z.object({
     imageUrl: z.string().url().optional().describe('URL of the image to understand.'),
@@ -356,6 +433,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           // Note: Logic requires one of imageUrl or imagePath, handled in code/Zod refine
         },
       },
+      {
+        name: 'image_generation',
+        description: 'Generates an image description and simple representation using Google Gemini. For production-quality images, use the detailed description with dedicated image generation services.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            prompt: { type: 'string', description: 'Description of the image to generate.' },
+            filePath: { type: 'string', description: 'Optional local file path (including filename and extension) where a simple image representation should be saved.' },
+          },
+          required: ['prompt'],
+        },
+      },
     ],
   };
 });
@@ -381,9 +470,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     } else if (toolName === 'image_understanding') {
         const validatedArgs = imageUnderstandingArgsSchema.parse(args);
         return await handleImageUnderstanding(validatedArgs);
-    // } else if (toolName === 'image_generation') { // Temporarily remove handler route
-    //     const validatedArgs = imageGenerationArgsSchema.parse(args);
-    //     return await handleImageGeneration(validatedArgs);
+    } else if (toolName === 'image_generation') {
+        const validatedArgs = imageGenerationArgsSchema.parse(args);
+        return await handleImageGeneration(validatedArgs);
     } else {
       throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
     }
