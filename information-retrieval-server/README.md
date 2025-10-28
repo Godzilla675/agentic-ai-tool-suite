@@ -1,29 +1,31 @@
 # information-retrieval-server MCP Server
 
-A Model Context Protocol server
-
-This is a TypeScript-based MCP server that implements a simple notes system. It demonstrates core MCP concepts by providing:
-
-- Resources representing text notes with URIs and metadata
-- Tools for creating new notes
-- Prompts for generating summaries of notes
+A Model Context Protocol server for web information retrieval using Google Custom Search API and web crawling capabilities.
 
 ## Features
 
-### Resources
-- List and access notes via `note://` URIs
-- Each note has a title, content and metadata
-- Plain text mime type for simple content access
-
 ### Tools
-- `create_note` - Create new text notes
-  - Takes title and content as required parameters
-  - Stores note in server state
 
-### Prompts
-- `summarize_notes` - Generate a summary of all stored notes
-  - Includes all note contents as embedded resources
-  - Returns structured prompt for LLM summarization
+- **`web_search`** - Perform web searches using Google Custom Search API
+  - Returns titles, links, and snippets for top search results
+  - Configurable result count (1-10)
+  
+- **`batch_web_search`** - Perform multiple web searches simultaneously
+  - Execute up to 15 queries in parallel
+  - Returns titles and links for each query
+  
+- **`google_image_search`** - Search for images using Google Custom Search
+  - Returns image URLs, titles, and context
+  - Configurable result count (1-10)
+  
+- **`web_crawl`** - Extract text content from webpages
+  - Fast HTTP-based content extraction
+  - Removes scripts, styles, and navigation elements
+  
+- **`advanced_web_crawl`** - Extract content using headless browser
+  - More robust for JavaScript-heavy sites
+  - Handles sites that block simple HTTP requests
+  - Slower but more reliable
 
 ## Development
 
@@ -44,7 +46,9 @@ npm run watch
 
 ## Installation
 
-To use with Claude Desktop, add the server config:
+### Quick Start (Recommended)
+
+The easiest way to use this MCP server is with `npx`. No installation required!
 
 On MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
@@ -52,8 +56,29 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "information-retrieval-server": {
-      "command": "/path/to/information-retrieval-server/build/index.js"
+    "information-retrieval": {
+      "command": "npx",
+      "args": ["-y", "information-retrieval-mcp-server"]
+    }
+  }
+}
+```
+
+### Alternative: Global Installation
+
+If you prefer to install the package globally:
+
+```bash
+npm install -g information-retrieval-mcp-server
+```
+
+Then configure:
+
+```json
+{
+  "mcpServers": {
+    "information-retrieval": {
+      "command": "information-retrieval-mcp-server"
     }
   }
 }

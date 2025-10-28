@@ -1,29 +1,31 @@
 # media-tools-server MCP Server
 
-A Model Context Protocol server
-
-This is a TypeScript-based MCP server that implements a simple notes system. It demonstrates core MCP concepts by providing:
-
-- Resources representing text notes with URIs and metadata
-- Tools for creating new notes
-- Prompts for generating summaries of notes
+A Model Context Protocol server for media search, download, and understanding using Unsplash, YouTube, and Google Gemini APIs.
 
 ## Features
 
-### Resources
-- List and access notes via `note://` URIs
-- Each note has a title, content and metadata
-- Plain text mime type for simple content access
-
 ### Tools
-- `create_note` - Create new text notes
-  - Takes title and content as required parameters
-  - Stores note in server state
 
-### Prompts
-- `summarize_notes` - Generate a summary of all stored notes
-  - Includes all note contents as embedded resources
-  - Returns structured prompt for LLM summarization
+- **`image_search`** - Search for high-quality images on Unsplash
+  - Returns image URLs, descriptions, and photographer credits
+  - Configurable result count (default: 5)
+  
+- **`download_image`** - Download images from URLs to local filesystem
+  - Supports any image URL
+  - Saves with custom filename and path
+  
+- **`video_search`** - Search for YouTube videos
+  - Returns video IDs, titles, descriptions, and channel info
+  - Configurable result count (default: 5)
+  
+- **`video_understanding`** - Extract transcripts from YouTube videos
+  - Returns timestamped transcript text
+  - Useful for content analysis and summarization
+  
+- **`image_understanding`** - Analyze images using Google Gemini AI
+  - Accepts image URLs or local file paths
+  - Optional custom prompts for guided analysis
+  - Returns detailed image descriptions
 
 ## Development
 
@@ -44,7 +46,9 @@ npm run watch
 
 ## Installation
 
-To use with Claude Desktop, add the server config:
+### Quick Start (Recommended)
+
+The easiest way to use this MCP server is with `npx`. No installation required!
 
 On MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
@@ -52,8 +56,48 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "media-tools-server": {
-      "command": "/path/to/media-tools-server/build/index.js"
+    "media-tools": {
+      "command": "npx",
+      "args": ["-y", "media-tools-mcp-server"]
+    }
+  }
+}
+```
+
+**Note:** This server requires a Google Gemini API key for image understanding features. Set it as an environment variable:
+
+```json
+{
+  "mcpServers": {
+    "media-tools": {
+      "command": "npx",
+      "args": ["-y", "media-tools-mcp-server"],
+      "env": {
+        "GEMINI_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+### Alternative: Global Installation
+
+If you prefer to install the package globally:
+
+```bash
+npm install -g media-tools-mcp-server
+```
+
+Then configure:
+
+```json
+{
+  "mcpServers": {
+    "media-tools": {
+      "command": "media-tools-mcp-server",
+      "env": {
+        "GEMINI_API_KEY": "your-api-key-here"
+      }
     }
   }
 }

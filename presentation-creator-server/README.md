@@ -1,29 +1,28 @@
 # presentation-creator-server MCP Server
 
-A Model Context Protocol server
-
-This is a TypeScript-based MCP server that implements a simple notes system. It demonstrates core MCP concepts by providing:
-
-- Resources representing text notes with URIs and metadata
-- Tools for creating new notes
-- Prompts for generating summaries of notes
+A Model Context Protocol server for creating PowerPoint presentations and PDF documents from HTML content using Playwright.
 
 ## Features
 
-### Resources
-- List and access notes via `note://` URIs
-- Each note has a title, content and metadata
-- Plain text mime type for simple content access
-
 ### Tools
-- `create_note` - Create new text notes
-  - Takes title and content as required parameters
-  - Stores note in server state
 
-### Prompts
-- `summarize_notes` - Generate a summary of all stored notes
-  - Includes all note contents as embedded resources
-  - Returns structured prompt for LLM summarization
+- **`assemble_presentation`** - Create PowerPoint presentations from HTML slides
+  - Takes a list of HTML strings (one per slide)
+  - Screenshots each HTML slide and assembles into PPTX
+  - Customizable filename
+  - Outputs to ~/Downloads folder
+  - Standard 16:9 aspect ratio (800x450 viewport)
+  
+- **`create_pdf_from_html`** - Generate PDF documents from HTML content
+  - Accepts full HTML document as string
+  - A4 format with configurable margins
+  - Includes background colors and images
+  - Outputs to ~/Downloads folder
+
+**Note:** This server requires Playwright browsers to be installed. After installation, run:
+```bash
+npx playwright install chromium
+```
 
 ## Development
 
@@ -44,7 +43,9 @@ npm run watch
 
 ## Installation
 
-To use with Claude Desktop, add the server config:
+### Quick Start (Recommended)
+
+The easiest way to use this MCP server is with `npx`. No installation required!
 
 On MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
@@ -52,8 +53,35 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "presentation-creator-server": {
-      "command": "/path/to/presentation-creator-server/build/index.js"
+    "presentation-creator": {
+      "command": "npx",
+      "args": ["-y", "presentation-creator-mcp-server"]
+    }
+  }
+}
+```
+
+**Important:** After first use, you may need to install Playwright browsers:
+```bash
+npx playwright install chromium
+```
+
+### Alternative: Global Installation
+
+If you prefer to install the package globally:
+
+```bash
+npm install -g presentation-creator-mcp-server
+npx playwright install chromium
+```
+
+Then configure:
+
+```json
+{
+  "mcpServers": {
+    "presentation-creator": {
+      "command": "presentation-creator-mcp-server"
     }
   }
 }

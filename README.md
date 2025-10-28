@@ -4,6 +4,8 @@
 
 This repository contains a collection of Model Context Protocol (MCP) servers, packaged together for convenience. Each server provides distinct functionalities related to media handling, information retrieval, and document creation.
 
+**📦 [View Published Packages](./PUBLISHED_PACKAGES.md)** - Easy installation guide for all npm packages!
+
 **Important:** These servers are designed to run as separate processes. You need to set up and configure each server individually within your MCP client (e.g., Cline or the Claude Desktop App).
 
 ## Included Servers
@@ -13,16 +15,87 @@ This repository contains a collection of Model Context Protocol (MCP) servers, p
 *   **PDF Creator Server (`pdf-creator-server`)**: Provides a tool to generate PDF documents from HTML content using Playwright and Pillow. (Python)
 *   **Presentation Creator Server (`presentation-creator-server`)**: Provides tools to assemble PowerPoint presentations from HTML slide content and generate PDFs from HTML. (Python)
 
-## Prerequisites
+## Quick Start (Recommended)
 
-*   **Node.js and npm**: Required for `media-tools-server` and `information-retrieval-server`. Download from [https://nodejs.org/](https://nodejs.org/)
-*   **Python and pip**: Required for `pdf-creator-server` and `presentation-creator-server`. Download from [https://www.python.org/](https://www.python.org/)
-*   **Git**: For cloning this repository.
-*   **MCP Client**: An application capable of running MCP servers (e.g., Cline, Claude Desktop App).
+The easiest way to use these MCP servers is via npm packages. No need to clone or build!
 
-## Setup Instructions
+### Published Packages
 
-Follow the steps below for each server you wish to use.
+All TypeScript/Node.js servers are now available on npm:
+- **information-retrieval-mcp-server**: Web search and crawling
+- **media-tools-mcp-server**: Image/video search and media understanding  
+- **presentation-creator-mcp-server**: Create presentations and PDFs from HTML
+
+### Installation Options
+
+#### Option 1: Using npx (Easiest - No Installation Required)
+
+Add to your MCP client config (e.g., `claude_desktop_config.json`):
+
+**Location of config file:**
+- **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "information-retrieval": {
+      "command": "npx",
+      "args": ["-y", "information-retrieval-mcp-server"],
+      "env": {
+        "GOOGLE_API_KEY": "your-google-api-key",
+        "GOOGLE_CSE_ID": "your-custom-search-engine-id"
+      }
+    },
+    "media-tools": {
+      "command": "npx",
+      "args": ["-y", "media-tools-mcp-server"],
+      "env": {
+        "UNSPLASH_ACCESS_KEY": "your-unsplash-key",
+        "GEMINI_API_KEY": "your-gemini-key"
+      }
+    },
+    "presentation-creator": {
+      "command": "npx",
+      "args": ["-y", "presentation-creator-mcp-server"]
+    }
+  }
+}
+```
+
+**API Keys Required:**
+- **Information Retrieval Server**: 
+  - Google Custom Search API key ([Get it here](https://console.cloud.google.com/))
+  - Custom Search Engine ID ([Create one here](https://programmablesearchengine.google.com/))
+- **Media Tools Server**:
+  - Unsplash API key ([Get it here](https://unsplash.com/developers))
+  - Google Gemini API key ([Get it here](https://aistudio.google.com/apikey))
+- **Presentation Creator Server**: No API keys required
+
+#### Option 2: Global npm Installation
+
+```bash
+npm install -g information-retrieval-mcp-server
+npm install -g media-tools-mcp-server
+npm install -g presentation-creator-mcp-server
+```
+
+Then configure with just the command name:
+
+```json
+{
+  "mcpServers": {
+    "information-retrieval": {
+      "command": "information-retrieval-mcp-server",
+      "env": { /* ... */ }
+    }
+  }
+}
+```
+
+## Advanced Setup (Build from Source)
+
+If you prefer to build from source or need to modify the servers:
 
 ### 1. Clone the Repository
 

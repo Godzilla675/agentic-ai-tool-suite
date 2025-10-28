@@ -1,22 +1,29 @@
 {
   "mcpServers": {
-    "media-tools": {
-      "command": "node",
-      "args": ["C:/absolute/path/to/unified-mcp-suite/media-tools-server/build/index.js"],
-      "env": {
-        "UNSPLASH_ACCESS_KEY": "YOUR_UNSPLASH_API_KEY_HERE",
-        "GOOGLE_API_KEY": "YOUR_GOOGLE_API_KEY_HERE"
-      },
-      "disabled": false,
-      "autoApprove": []
-    },
     "information-retrieval": {
-      "command": "node",
-      "args": ["C:/absolute/path/to/unified-mcp-suite/information-retrieval-server/build/index.js"],
+      "command": "npx",
+      "args": ["-y", "information-retrieval-mcp-server"],
       "env": {
         "GOOGLE_API_KEY": "YOUR_GOOGLE_API_KEY_HERE",
         "GOOGLE_CSE_ID": "YOUR_GOOGLE_CUSTOM_SEARCH_ENGINE_ID_HERE"
       },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "media-tools": {
+      "command": "npx",
+      "args": ["-y", "media-tools-mcp-server"],
+      "env": {
+        "UNSPLASH_ACCESS_KEY": "YOUR_UNSPLASH_API_KEY_HERE",
+        "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY_HERE"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "presentation-creator": {
+      "command": "npx",
+      "args": ["-y", "presentation-creator-mcp-server"],
+      "env": {},
       "disabled": false,
       "autoApprove": []
     },
@@ -25,14 +32,8 @@
       "args": ["C:/absolute/path/to/unified-mcp-suite/pdf-creator-server/pdf_creator_server.py"],
       "env": {},
       "disabled": false,
-      "autoApprove": []
-    },
-    "presentation-creator": {
-      "command": "C:/absolute/path/to/unified-mcp-suite/presentation-creator-server/.venv/Scripts/python.exe",
-      "args": ["C:/absolute/path/to/unified-mcp-suite/presentation-creator-server/presentation_creator_server.py"],
-      "env": {},
-      "disabled": false,
-      "autoApprove": []
+      "autoApprove": [],
+      "alwaysAllow": []
     }
   }
 }
