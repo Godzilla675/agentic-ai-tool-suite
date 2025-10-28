@@ -1,9 +1,23 @@
 {
-  "name": "presentation-creator-server",
+  "name": "presentation-creator-mcp-server",
   "version": "0.1.0",
-  "description": "A Model Context Protocol server",
-  "private": true,
+  "description": "MCP server for creating presentations and PDF documents from HTML",
   "type": "module",
+  "author": "Godzilla675",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Godzilla675/agentic-ai-tool-suite.git",
+    "directory": "presentation-creator-server"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "presentation",
+    "pdf",
+    "powerpoint",
+    "html-to-pdf"
+  ],
   "bin": {
     "presentation-creator-server": "./build/index.js"
   },

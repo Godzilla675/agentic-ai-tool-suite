@@ -1,9 +1,23 @@
 {
-  "name": "media-tools-server",
+  "name": "media-tools-mcp-server",
   "version": "0.1.0",
-  "description": "A Model Context Protocol server",
-  "private": true,
+  "description": "MCP server for media operations including image search, video search, and media understanding",
   "type": "module",
+  "author": "Godzilla675",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Godzilla675/agentic-ai-tool-suite.git",
+    "directory": "media-tools-server"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "media",
+    "image-search",
+    "video-search",
+    "youtube"
+  ],
   "bin": {
     "media-tools-server": "./build/index.js"
   },

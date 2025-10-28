@@ -1,9 +1,22 @@
 {
-  "name": "information-retrieval-server",
+  "name": "information-retrieval-mcp-server",
   "version": "0.1.0",
-  "description": "A Model Context Protocol server",
-  "private": true,
+  "description": "MCP server for information retrieval with web search, web crawling, and image search capabilities",
   "type": "module",
+  "author": "Godzilla675",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Godzilla675/agentic-ai-tool-suite.git",
+    "directory": "information-retrieval-server"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "web-search",
+    "web-crawling",
+    "information-retrieval"
+  ],
   "bin": {
     "information-retrieval-server": "./build/index.js"
   },
