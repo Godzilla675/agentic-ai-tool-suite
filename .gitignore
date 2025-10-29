@@ -23,3 +23,7 @@ pip-delete-this-directory.txt
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Config files with API keys (DO NOT COMMIT)
+npx_mcp_settings_with_keys.json
+*_with_keys.json

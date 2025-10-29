@@ -18,7 +18,15 @@
         "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY_HERE"
       },
       "disabled": false,
-      "autoApprove": []
+      "autoApprove": [],
+      "alwaysAllow": [
+        "image_search",
+        "download_image",
+        "video_search",
+        "video_understanding",
+        "image_understanding",
+        "image_generation"
+      ]
     },
     "presentation-creator": {
       "command": "npx",
