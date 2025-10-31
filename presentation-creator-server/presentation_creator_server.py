@@ -20,10 +20,8 @@ load_dotenv()
 
 # --- Server Setup ---
 mcp = FastMCP(
-    "presentation-creator-server",
-    version="0.1.0",
-    title="Presentation Creator Server",
-    description="Assembles slide content into a PowerPoint presentation.",
+    name="presentation-creator-server",
+    instructions="Assembles slide content into a PowerPoint presentation.",
 )
 
 # --- Constants ---
