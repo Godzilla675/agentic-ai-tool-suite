@@ -19,10 +19,9 @@ load_dotenv()
 
 # --- Server Setup ---
 mcp = FastMCP(
-    "pdf-creator-server",
-    version="0.1.0",
-    title="PDF Creator Server",
-    description="Generates PDF documents from HTML content.",)
+    name="pdf-creator-server",
+    instructions="Generates PDF documents from HTML content.",
+)
 
 
 # --- Tool Implementation ---
