@@ -1,6 +1,6 @@
 {
   "name": "presentation-creator-mcp-server",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "MCP server for creating presentations and PDF documents from HTML",
   "type": "module",
   "author": "Godzilla675",
@@ -25,16 +25,23 @@
     "build"
   ],
   "scripts": {
-    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "build": "tsc && esbuild build/index.js --bundle --platform=node --format=esm --packages=external --outfile=build/index.js --allow-overwrite && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "0.6.0"
+    "@modelcontextprotocol/sdk": "0.6.0",
+    "playwright": "^1.51.1",
+    "pptxgenjs": "^3.12.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "0.6.0",
     "@types/node": "^20.11.24",
-    "typescript": "^5.3.3"
+    "esbuild": "^0.25.11",
+    "pptxgenjs": "^3.12.0",
+    "typescript": "^5.3.3",
+    "zod": "^3.22.4"
   }
 }

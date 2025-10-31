@@ -1,219 +1,307 @@
 #!/usr/bin/env node
 
 /**
- * This is a template MCP server that implements a simple notes system.
- * It demonstrates core MCP concepts like resources and tools by allowing:
- * - Listing notes as resources
- * - Reading individual notes
- * - Creating new notes via a tool
- * - Summarizing all notes via a prompt
+ * Presentation Creator MCP Server
+ * Provides tools for creating PowerPoint presentations and PDFs from HTML
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
-  ListResourcesRequestSchema,
+  ErrorCode,
   ListToolsRequestSchema,
-  ReadResourceRequestSchema,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
+  McpError,
 } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { chromium, Browser, Page } from "playwright";
+import pptxgen from "pptxgenjs";
+const PptxGenJS = pptxgen.default || pptxgen;
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 /**
- * Type alias for a note object.
- */
-type Note = { title: string, content: string };
-
-/**
- * Simple in-memory storage for notes.
- * In a real implementation, this would likely be backed by a database.
- */
-const notes: { [id: string]: Note } = {
-  "1": { title: "First Note", content: "This is note 1" },
-  "2": { title: "Second Note", content: "This is note 2" }
-};
-
-/**
- * Create an MCP server with capabilities for resources (to list/read notes),
- * tools (to create new notes), and prompts (to summarize notes).
+ * Create an MCP server with presentation and PDF creation tools
  */
 const server = new Server(
   {
     name: "presentation-creator-server",
-    version: "0.1.0",
+    version: "0.1.1",
   },
   {
     capabilities: {
       resources: {},
       tools: {},
-      prompts: {},
     },
   }
 );
 
-/**
- * Handler for listing available notes as resources.
- * Each note is exposed as a resource with:
- * - A note:// URI scheme
- * - Plain text MIME type
- * - Human readable name and description (now including the note title)
- */
-server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  return {
-    resources: Object.entries(notes).map(([id, note]) => ({
-      uri: `note:///${id}`,
-      mimeType: "text/plain",
-      name: note.title,
-      description: `A text note: ${note.title}`
-    }))
-  };
-});
+// --- Helper Functions ---
 
-/**
- * Handler for reading the contents of a specific note.
- * Takes a note:// URI and returns the note content as plain text.
- */
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const url = new URL(request.params.uri);
-  const id = url.pathname.replace(/^\//, '');
-  const note = notes[id];
+async function createTempFile(content: string, extension: string): Promise<string> {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-presentation-"));
+  const filePath = path.join(tempDir, `content${extension}`);
+  fs.writeFileSync(filePath, content, "utf-8");
+  return filePath;
+}
 
-  if (!note) {
-    throw new Error(`Note ${id} not found`);
+function cleanupTemp(filePath: string) {
+  try {
+    const dir = path.dirname(filePath);
+    fs.rmSync(dir, { recursive: true, force: true });
+  } catch (error) {
+    console.error("Error cleaning up temp files:", error);
   }
+}
 
-  return {
-    contents: [{
-      uri: request.params.uri,
-      mimeType: "text/plain",
-      text: note.content
-    }]
-  };
+// --- Tool Implementation ---
+
+async function handleAssemblePresentation({ slides_html, filename }: { slides_html: string[]; filename: string }) {
+  const tempFiles: string[] = [];
+  let browser: Browser | null = null;
+
+  try {
+    if (!slides_html || slides_html.length === 0) {
+      throw new Error("No slide HTML data provided");
+    }
+
+    // Create PowerPoint presentation
+    const pptx = new PptxGenJS();
+    pptx.layout = "LAYOUT_16x9";
+
+    // Launch browser for screenshots
+    browser = await chromium.launch();
+    const page: Page = await browser.newPage();
+    await page.setViewportSize({ width: 1920, height: 1080 });
+
+    // Process each slide
+    for (let i = 0; i < slides_html.length; i++) {
+      const htmlContent = slides_html[i];
+      
+      // Create temp HTML file
+      const htmlPath = await createTempFile(htmlContent, ".html");
+      tempFiles.push(htmlPath);
+
+      // Navigate and screenshot
+      await page.goto(`file://${htmlPath}`, { waitUntil: "domcontentloaded" });
+      
+      const screenshotPath = htmlPath.replace(".html", ".png");
+      await page.screenshot({ path: screenshotPath, fullPage: false });
+      tempFiles.push(screenshotPath);
+
+      // Add slide with image
+      const slide = pptx.addSlide();
+      slide.addImage({
+        path: screenshotPath,
+        x: 0,
+        y: 0,
+        w: "100%",
+        h: "100%",
+      });
+
+      console.error(`Processed slide ${i + 1}/${slides_html.length}`);
+    }
+
+    await browser.close();
+    browser = null;
+
+    // Save presentation to Downloads folder
+    const downloadsPath = path.join(os.homedir(), "Downloads");
+    if (!fs.existsSync(downloadsPath)) {
+      fs.mkdirSync(downloadsPath, { recursive: true });
+    }
+
+    const outputPath = path.join(downloadsPath, `${filename}.pptx`);
+    await pptx.writeFile({ fileName: outputPath });
+
+    // Cleanup temp files
+    tempFiles.forEach(cleanupTemp);
+
+    return {
+      content: [{
+        type: "text",
+        text: `Presentation successfully created and saved to: ${outputPath}`
+      }]
+    };
+
+  } catch (error: any) {
+    if (browser) await browser.close();
+    tempFiles.forEach(cleanupTemp);
+    
+    console.error("Error assembling presentation:", error);
+    return {
+      isError: true,
+      content: [{
+        type: "text",
+        text: `Error assembling presentation: ${error.message}`
+      }]
+    };
+  }
+}
+
+async function handleCreatePdfFromHtml({ html_content, filename }: { html_content: string; filename: string }) {
+  let htmlPath: string | null = null;
+  let browser: Browser | null = null;
+
+  try {
+    if (!html_content || html_content.trim() === "") {
+      throw new Error("html_content must be a non-empty string");
+    }
+
+    // Create temp HTML file
+    htmlPath = await createTempFile(html_content, ".html");
+
+    // Launch browser
+    browser = await chromium.launch();
+    const page: Page = await browser.newPage();
+
+    await page.goto(`file://${htmlPath}`, { waitUntil: "domcontentloaded" });
+
+    // Save PDF to Downloads folder
+    const downloadsPath = path.join(os.homedir(), "Downloads");
+    if (!fs.existsSync(downloadsPath)) {
+      fs.mkdirSync(downloadsPath, { recursive: true });
+    }
+
+    const outputPath = path.join(downloadsPath, `${filename}.pdf`);
+    await page.pdf({
+      path: outputPath,
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        bottom: "20mm",
+        left: "20mm",
+        right: "20mm",
+      },
+    });
+
+    await browser.close();
+    browser = null;
+
+    // Cleanup
+    if (htmlPath) cleanupTemp(htmlPath);
+
+    return {
+      content: [{
+        type: "text",
+        text: `PDF successfully created and saved to: ${outputPath}`
+      }]
+    };
+
+  } catch (error: any) {
+    if (browser) await browser.close();
+    if (htmlPath) cleanupTemp(htmlPath);
+    
+    console.error("Error creating PDF:", error);
+    return {
+      isError: true,
+      content: [{
+        type: "text",
+        text: `Error creating PDF: ${error.message}`
+      }]
+    };
+  }
+}
+
+// --- Tool Schemas ---
+
+const assemblePresentationArgsSchema = z.object({
+  slides_html: z.array(z.string()).min(1).describe("A list where each item is a string containing the full HTML code for one slide."),
+  filename: z.string().optional().default("presentation").describe("The desired base name for the output PPTX file (without extension)."),
 });
 
-/**
- * Handler that lists available tools.
- * Exposes a single "create_note" tool that lets clients create new notes.
- */
+const createPdfFromHtmlArgsSchema = z.object({
+  html_content: z.string().min(1).describe("A string containing the full HTML code for the document."),
+  filename: z.string().optional().default("document").describe("The desired base name for the output PDF file (without extension)."),
+});
+
+// --- Tool Registration ---
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "create_note",
-        description: "Create a new note",
+        name: "assemble_presentation",
+        description: "Assembles a PowerPoint presentation from a list of HTML strings. Each HTML string represents one slide.",
         inputSchema: {
           type: "object",
           properties: {
-            title: {
-              type: "string",
-              description: "Title of the note"
+            slides_html: {
+              type: "array",
+              items: { type: "string" },
+              description: "A list where each item is a string containing the full HTML code for one slide."
             },
-            content: {
+            filename: {
               type: "string",
-              description: "Text content of the note"
+              description: "The desired base name for the output PPTX file (without extension).",
+              default: "presentation"
             }
           },
-          required: ["title", "content"]
-        }
-      }
-    ]
-  };
-});
-
-/**
- * Handler for the create_note tool.
- * Creates a new note with the provided title and content, and returns success message.
- */
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  switch (request.params.name) {
-    case "create_note": {
-      const title = String(request.params.arguments?.title);
-      const content = String(request.params.arguments?.content);
-      if (!title || !content) {
-        throw new Error("Title and content are required");
-      }
-
-      const id = String(Object.keys(notes).length + 1);
-      notes[id] = { title, content };
-
-      return {
-        content: [{
-          type: "text",
-          text: `Created note ${id}: ${title}`
-        }]
-      };
-    }
-
-    default:
-      throw new Error("Unknown tool");
-  }
-});
-
-/**
- * Handler that lists available prompts.
- * Exposes a single "summarize_notes" prompt that summarizes all notes.
- */
-server.setRequestHandler(ListPromptsRequestSchema, async () => {
-  return {
-    prompts: [
-      {
-        name: "summarize_notes",
-        description: "Summarize all notes",
-      }
-    ]
-  };
-});
-
-/**
- * Handler for the summarize_notes prompt.
- * Returns a prompt that requests summarization of all notes, with the notes' contents embedded as resources.
- */
-server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-  if (request.params.name !== "summarize_notes") {
-    throw new Error("Unknown prompt");
-  }
-
-  const embeddedNotes = Object.entries(notes).map(([id, note]) => ({
-    type: "resource" as const,
-    resource: {
-      uri: `note:///${id}`,
-      mimeType: "text/plain",
-      text: note.content
-    }
-  }));
-
-  return {
-    messages: [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: "Please summarize the following notes:"
+          required: ["slides_html"]
         }
       },
-      ...embeddedNotes.map(note => ({
-        role: "user" as const,
-        content: note
-      })),
       {
-        role: "user",
-        content: {
-          type: "text",
-          text: "Provide a concise summary of all the notes above."
+        name: "create_pdf_from_html",
+        description: "Generates a PDF document from a string containing HTML code.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            html_content: {
+              type: "string",
+              description: "A string containing the full HTML code for the document."
+            },
+            filename: {
+              type: "string",
+              description: "The desired base name for the output PDF file (without extension).",
+              default: "document"
+            }
+          },
+          required: ["html_content"]
         }
       }
     ]
   };
 });
 
-/**
- * Start the server using stdio transport.
- * This allows the server to communicate via standard input/output streams.
- */
+// --- Tool Handler ---
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const toolName = request.params.name;
+  const args = request.params.arguments;
+
+  try {
+    if (toolName === "assemble_presentation") {
+      const validatedArgs = assemblePresentationArgsSchema.parse(args);
+      return await handleAssemblePresentation(validatedArgs);
+    } else if (toolName === "create_pdf_from_html") {
+      const validatedArgs = createPdfFromHtmlArgsSchema.parse(args);
+      return await handleCreatePdfFromHtml(validatedArgs);
+    } else {
+      throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
+    }
+  } catch (error: any) {
+    console.error(`Error calling tool ${toolName}:`, error);
+    if (error instanceof z.ZodError) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Invalid arguments for tool ${toolName}: ${error.errors.map((e) => e.message).join(", ")}`
+      );
+    }
+    if (error instanceof McpError) {
+      throw error;
+    }
+    throw new McpError(ErrorCode.InternalError, `Error executing tool ${toolName}: ${error.message}`);
+  }
+});
+
+// --- Server Execution ---
+
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  console.error("Presentation Creator MCP Server running on stdio");
 }
 
 main().catch((error) => {
